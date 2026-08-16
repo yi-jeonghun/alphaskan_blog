@@ -1,0 +1,74 @@
+---
+title: "Open DART 가입하고 API Key 받기"
+description: "AlphaSkan에서 DART 공시 데이터를 사용하기 위해 Open DART에 가입하고 API 인증키를 발급받아본 기록."
+pubDate: "2026-08-17"
+---
+
+Open DART(오픈 다트)는 금융감독원이 운영하는 전자공시시스템 DART의 공시 데이터를 개발자나 일반 사용자가 프로그램이나 웹 서비스에서 직접 활용할 수 있도록 **Open API 형태로 제공하는 서비스**다.
+
+Open DART 주소  
+https://opendart.fss.or.kr/
+
+## API Key가 필요하다
+
+Open DART API를 사용하려면 **인증키(API Key)**가 필요하다.
+
+Open DART 사이트의 **인증키 신청/관리** 메뉴에서 신청할 수 있다.
+
+인증키 신청 주소  
+https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do
+
+<img
+  src={`${import.meta.env.BASE_URL}images/blog/2026-08-17-open-dart/인증키-신청-화면.webp`}
+  alt="Open DART 인증키 신청 화면"
+/>
+
+## 개인회원으로 신청했다
+
+사용자 구분에는 **개인회원**과 **기업회원**이 있다.
+
+나는 개인 프로젝트에서 사용할 예정이라 개인회원을 선택했다.
+
+화면 안내를 보면 인증키 발급 시간은 다음과 같다.
+
+- 개인회원: 계정 신청 완료 후 즉시 발급
+- 기업회원: 계정 신청 완료 후 담당자 승인(1~2영업일) 후 발급
+
+## API 사용환경과 사용용도
+
+API 사용환경은 **웹**만 선택했다.
+
+AlphaSkan은 서버에서 API를 호출하고 웹 화면에서 결과를 확인하는 형태로 만들 생각이기 때문이다.
+
+API 사용용도는 필수 입력 항목이다.
+
+나는 대략 다음과 같은 내용으로 입력했다.
+
+> 개인 투자 학습 및 개발 프로젝트에서 DART 공시정보를 수집·분석하고, 공시 이후 시장 반응을 연구하기 위함
+
+너무 복잡하게 작성할 필요는 없고 실제 사용 목적을 적으면 되는 것 같다.
+
+**확인 URL은 필수 항목이 아니어서 비워두었다.**
+
+## 이메일 인증 후 API Key 발급
+
+등록 버튼을 누르면 금융감독원에서 신청 확인 메일이 온다.
+
+이메일의 인증 확인을 진행하면 어렵지 않게 API Key를 발급받을 수 있었다.
+
+발급받은 API Key와 사용 현황은 아래 페이지에서 확인할 수 있다.
+
+https://opendart.fss.or.kr/mng/apiUsageStatusView.do
+
+<img
+  src={`${import.meta.env.BASE_URL}images/blog/2026-08-17-open-dart/오픈API이용현황.webp`}
+  alt="Open DART 오픈API 이용현황 화면"
+/>
+
+API Key를 발급받았으니 이제 실제로 Open DART API를 한 번 호출해볼 수 있게 됐다.
+
+아직 어떤 API부터 사용해야 할지는 잘 모르겠다.
+
+다음에는 가장 기본적인 공시 조회 API부터 직접 호출해봐야겠다.
+
+> **주의:** 발급받은 API Key는 비밀번호처럼 관리해야 한다. 블로그 스크린샷이나 GitHub 저장소에 그대로 노출하지 않도록 주의해야겠다.
