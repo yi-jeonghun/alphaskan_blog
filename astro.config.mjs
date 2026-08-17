@@ -8,6 +8,7 @@ import { defineConfig, fontProviders } from 'astro/config';
 export default defineConfig({
 	site: 'https://yi-jeonghun.github.io',
 	base: '/alphaskan_blog',
+	trailingSlash: 'always',
 	integrations: [mdx(), sitemap()],
 	fonts: [
 		{
