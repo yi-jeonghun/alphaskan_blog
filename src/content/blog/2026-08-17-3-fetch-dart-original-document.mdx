@@ -1,0 +1,591 @@
+
+---
+title: "OpenDART에서 공시 원문까지 가져와봤다"
+description: "공시검색 API에서 얻은 rcept_no를 이용해 공시서류원본파일 API를 호출하고, ZIP 파일을 자동으로 풀어 XML 원문을 확인해봤다."
+pubDate: "2026-08-17T18:00:00+09:00"
+---
+
+지난번에는 Node.js에서 OpenDART의 `공시검색` API를 호출해서 공시 목록을 가져오는 것까지 해봤다.
+
+공시 목록은 JSON으로 잘 내려왔다.
+
+예를 들면 이런 식이다.
+
+```json
+{
+  "corp_code": "01263022",
+  "corp_name": "BGF리테일",
+  "stock_code": "282330",
+  "corp_cls": "Y",
+  "report_nm": "[기재정정]반기보고서 (2026.06)",
+  "rcept_no": "20260814004307",
+  "flr_nm": "BGF리테일",
+  "rcept_dt": "20260814",
+  "rm": ""
+}
+````
+
+회사명과 공시 제목은 알 수 있는데, 여기에는 실제 공시 내용은 없다.
+
+그래서 이번에는 한 단계 더 들어가 보기로 했다.
+
+> **공시 목록에서 하나를 골라 실제 공시 원문까지 가져와본다.**
+
+## rcept_no는 무엇일까?
+
+공시검색 결과를 보면 `rcept_no`라는 값이 있다.
+
+```text
+20260814004307
+```
+
+이 값은 DART에서 해당 공시를 식별하는 접수번호다.
+
+공시검색 API로 목록을 가져온 다음, 이 `rcept_no`를 이용하면 실제 공시 원문까지 따라갈 수 있다.
+
+이번에는 위에서 찾은 BGF리테일의 반기보고서를 그대로 사용해보기로 했다.
+
+```text
+회사: BGF리테일
+공시: [기재정정]반기보고서 (2026.06)
+rcept_no: 20260814004307
+```
+
+## 공시서류원본파일 API
+
+OpenDART에는 `공시서류원본파일`이라는 API가 있다.
+
+API 주소는 다음과 같다.
+
+```text
+https://opendart.fss.or.kr/api/document.xml
+```
+
+<img
+  src={`${import.meta.env.BASE_URL}images/blog/2026-08-17-3-fetch-dart-original-document/공시서류원본파일 화면.webp`}
+  alt="공시서류원본파일 화면"
+/>
+
+
+
+여기에 API Key와 `rcept_no`를 넘기면 된다.
+
+요청 형태는 대략 이렇다.
+
+```text
+https://opendart.fss.or.kr/api/document.xml
+?crtfc_key=API_KEY
+&rcept_no=20260814004307
+```
+
+처음에는 이름이 `document.xml`이라서 XML이 바로 내려올 거라고 생각했다.
+
+그런데 실제 응답은 ZIP 파일이다.
+
+ZIP 파일 안에 공시 원문 XML이 들어 있다.
+
+## Node.js에서 원본 파일 다운로드
+
+이번에는 브라우저나 curl로 직접 다운로드하지 않고 AlphaSkan 코드에서 처리하기로 했다.
+
+흐름은 단순하다.
+
+```text
+공시검색
+   ↓
+rcept_no 확인
+   ↓
+공시서류원본파일 API 호출
+   ↓
+ZIP 다운로드
+   ↓
+압축 해제
+   ↓
+XML 파일 읽기
+   ↓
+터미널 출력
+```
+
+아직 XML 내용을 분석할 생각은 없다.
+
+이번 목표는 단순히 **프로그램이 공시 원문을 자동으로 가져올 수 있는지 확인하는 것**이다.
+
+node.js에서 zip 압축 해제가 필요하기 때문에 **jszip** package를 추가했다.
+
+```bash
+npm install jszip
+```
+
+> [공시 원본 다운로드 코드는 맨 아래에 있음]
+
+## ZIP 파일을 자동으로 풀어본다
+
+API에서 받은 ZIP 파일을 파일로 저장한 다음 직접 압축을 푸는 것도 가능하다.
+
+하지만 AlphaSkan은 나중에 자동으로 동작해야 하므로 프로그램 안에서 압축까지 풀도록 해봤다.
+
+결과적으로 프로그램은 다음 순서로 동작한다.
+
+```text
+공시 원본 다운로드 중...
+ZIP 다운로드 완료
+
+압축 해제 중...
+XML 파일 발견
+
+XML 읽는 중...
+```
+
+그리고 XML 파일 내용을 터미널에 출력해봤다.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+...
+...
+...
+```
+
+실제 XML은 생각했던 것보다 훨씬 길었다.
+
+반기보고서 전체가 들어 있으니 당연한 것 같기도 하다.
+
+> [터미널에 XML이 출력된 화면]
+
+```text
+% npm run dev      
+
+> alphaskan@0.0.1 dev
+> tsx src/index.ts
+
+OpenDART 공시 조회
+조회일: 2026-08-14
+
+공시 수: 10
+
+1. BGF리테일
+   종목코드: 282330
+   공시: [기재정정]반기보고서 (2026.06)
+   접수번호: 20260814004307
+   접수일: 20260814
+
+생략
+
+========================================
+첫 번째 공시의 원문을 가져옵니다.
+========================================
+
+회사: BGF리테일
+공시: [기재정정]반기보고서 (2026.06)
+접수번호: 20260814004307
+
+공시 원본 ZIP 다운로드 중...
+ZIP 다운로드 완료 (237 KB)
+
+ZIP 압축 해제 중...
+
+ZIP 안의 XML 파일 수: 1
+   1. 20260814004307.xml
+
+읽을 XML 파일: 20260814004307.xml
+
+========================================
+XML 원문
+========================================
+
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<DOCUMENT xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="dart4.xsd">
+
+<DOCUMENT-NAME ACODE="11012">반기보고서</DOCUMENT-NAME>
+<FORMULA-VERSION ADATE="20260723">6.7</FORMULA-VERSION>
+<COMPANY-NAME AREGCIK="01263022">(주)비지에프리테일</COMPANY-NAME>
+
+<SUMMARY>
+<EXTRACTION ACODE="IFRS_YN" AFEATURE="BOTH">Y</EXTRACTION>
+<EXTRACTION ACODE="CRP_RGS_NO_TEMP" AFEATURE="BOTH">110111-6555770</EXTRACTION>
+</SUMMARY>
+
+
+<BODY ATOCID="992">
+
+<LIBRARY>
+<CORRECTION>
+<TITLE ATOC="Y" AASSOCNOTE="CORRECTION" ENG="Report of Disclosure Revision" ATOCID="891">정 정 신 고 (보고)</TITLE>
+
+<TABLE ACLASS="NORMAL" AFIXTABLE="Y" WIDTH="600" BORDER="0">
+
+<COLGROUP WIDTH="600">
+<COL WIDTH="600"></COL>
+</COLGROUP>
+
+<TBODY>
+
+<TR ACOPY="N" ADELETE="N" HEIGHT="30">
+<TD WIDTH="591" HEIGHT="23"></TD>
+</TR>
+
+<TR ACOPY="N" ADELETE="N" HEIGHT="30">
+<TD ALIGN="RIGHT" WIDTH="591" HEIGHT="23">2026년 08월 14일</TD>
+</TR>
+</TBODY>
+</TABLE>
+<P></P>
+<P></P>
+
+<TABLE ACLASS="NORMAL" AFIXTABLE="Y" WIDTH="600" BORDER="0">
+
+<COLGROUP WIDTH="600">
+<COL WIDTH="165"></COL>
+<COL WIDTH="435"></COL>
+</COLGROUP>
+
+이하 생략(너무 길어서)
+
+```
+
+
+## OpenDART의 수많은 API를 조금 이해하게 됐다
+
+OpenDART 개발가이드를 처음 봤을 때 가장 이해가 안 됐던 것이 하나 있었다.
+
+API 종류가 너무 많았다.
+
+정기보고서 주요정보, 재무정보, 지분공시, 주요사항보고서 등 수많은 API가 있어서 이것들을 전부 알아야 하는 건가 싶었다.
+
+이번에 원본 XML까지 가져와보니 구조가 조금 이해됐다.
+
+공시 원문 전체가 필요하다면:
+
+```text
+공시검색
+→ rcept_no
+→ 공시서류원본파일
+→ XML 원문
+```
+
+으로 가져올 수 있다.
+
+반면 OpenDART의 다른 API들은 공시 안에 들어 있는 특정 정보를 프로그램에서 쉽게 사용할 수 있도록 별도로 구조화해서 제공하는 것 같다.
+
+AlphaSkan 초기 버전에서는 일단 이 수많은 API를 모두 사용하지 않기로 했다.
+
+먼저 가장 단순하게 가보려고 한다.
+
+```text
+공시를 찾는다
+      ↓
+원문을 가져온다
+      ↓
+AI가 읽는다
+```
+
+필요하다면 나중에 성능이나 비용 문제를 겪었을 때 구조화된 API를 추가로 활용하면 될 것 같다.
+
+## 이제 공시 제목뿐 아니라 내용도 가져올 수 있다
+
+지금까지 AlphaSkan이 할 수 있었던 것은 공시 목록을 가져오는 것뿐이었다.
+
+```text
+회사명
+공시 제목
+접수번호
+접수일
+```
+
+이번에는 그 접수번호를 이용해서 실제 공시 원문까지 가져오는 데 성공했다.
+
+현재 AlphaSkan의 흐름은 이렇게 됐다.
+
+```text
+OpenDART
+   ↓
+공시검색 API
+   ↓
+공시 목록
+   ↓
+rcept_no
+   ↓
+공시서류원본파일 API
+   ↓
+ZIP
+   ↓
+XML
+```
+
+아직 XML 내용을 이해하지는 못한다.
+
+그냥 가져와서 출력하는 것뿐이다.
+
+하지만 이제 다음 단계가 자연스럽게 보인다.
+
+> **이 긴 XML을 AI에게 어떻게 읽힐까?**
+
+다음에는 XML에서 불필요한 부분을 정리하고, 실제 공시 내용을 AI에게 분석시켜보려고 한다.
+
+
+
+## 소스코드
+
+```typescript
+import "dotenv/config";
+import JSZip from "jszip";
+
+interface DartDisclosure {
+	corp_cls: string;
+	corp_name: string;
+	corp_code: string;
+	stock_code: string;
+	report_nm: string;
+	rcept_no: string;
+	flr_nm: string;
+	rcept_dt: string;
+	rm: string;
+}
+
+interface DartResponse {
+	status: string;
+	message: string;
+	page_no?: number;
+	page_count?: number;
+	total_count?: number;
+	total_page?: number;
+	list?: DartDisclosure[];
+}
+
+function getTodayInSeoul(): string {
+	const parts = new Intl.DateTimeFormat("en-US", {
+		timeZone: "Asia/Seoul",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(new Date());
+
+	const year = parts.find((part) => part.type === "year")?.value;
+	const month = parts.find((part) => part.type === "month")?.value;
+	const day = parts.find((part) => part.type === "day")?.value;
+
+	if (!year || !month || !day) {
+		throw new Error("오늘 날짜를 계산하지 못했습니다.");
+	}
+
+	return `${year}${month}${day}`;
+}
+
+function formatDate(date: string): string {
+	if (date.length !== 8) {
+		return date;
+	}
+
+	return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+}
+
+/**
+ * 공시 목록 조회
+ */
+async function fetchDisclosures(
+	apiKey: string,
+	date: string,
+): Promise<DartResponse> {
+	const params = new URLSearchParams({
+		crtfc_key: apiKey,
+		bgn_de: date,
+		end_de: date,
+		corp_cls: "Y",
+		page_no: "1",
+		page_count: "10",
+	});
+
+	const response = await fetch(
+		`https://opendart.fss.or.kr/api/list.json?${params.toString()}`,
+	);
+
+	if (!response.ok) {
+		throw new Error(
+			`OpenDART HTTP 오류: ${response.status} ${response.statusText}`,
+		);
+	}
+
+	return (await response.json()) as DartResponse;
+}
+
+/**
+ * 공시 원본 ZIP 다운로드
+ */
+async function fetchDisclosureDocument(
+	apiKey: string,
+	rceptNo: string,
+): Promise<ArrayBuffer> {
+	const params = new URLSearchParams({
+		crtfc_key: apiKey,
+		rcept_no: rceptNo,
+	});
+
+	const response = await fetch(
+		`https://opendart.fss.or.kr/api/document.xml?${params.toString()}`,
+	);
+
+	if (!response.ok) {
+		throw new Error(
+			`공시 원본 다운로드 HTTP 오류: ${response.status} ${response.statusText}`,
+		);
+	}
+
+	return await response.arrayBuffer();
+}
+
+/**
+ * ZIP 압축을 풀고 XML 파일 내용을 반환
+ */
+async function extractXmlFromZip(zipData: ArrayBuffer): Promise<string> {
+	const zip = await JSZip.loadAsync(zipData);
+
+	const files = Object.values(zip.files).filter(
+		(file) => !file.dir && file.name.toLowerCase().endsWith(".xml"),
+	);
+
+	if (files.length === 0) {
+		throw new Error("ZIP 파일 안에서 XML 파일을 찾지 못했습니다.");
+	}
+
+	console.log(`ZIP 안의 XML 파일 수: ${files.length}`);
+
+	files.forEach((file, index) => {
+		console.log(`   ${index + 1}. ${file.name}`);
+	});
+
+	console.log("");
+
+	// 이번 Sprint에서는 첫 번째 XML 파일을 읽는다.
+	const xmlFile = files[0];
+
+	console.log(`읽을 XML 파일: ${xmlFile.name}`);
+	console.log("");
+
+	return await xmlFile.async("string");
+}
+
+async function main() {
+	const apiKey = process.env.OPENDART_API_KEY;
+
+	if (!apiKey) {
+		console.error("OPENDART_API_KEY가 설정되지 않았습니다.");
+		console.error(".env 파일에 OpenDART API Key를 설정해주세요.");
+		process.exitCode = 1;
+		return;
+	}
+
+	let today = getTodayInSeoul();
+
+	// 오늘은 공휴일이므로 테스트를 위해 이전 거래일 사용
+	today = "20260814";
+
+	console.log("OpenDART 공시 조회");
+	console.log(`조회일: ${formatDate(today)}`);
+	console.log("");
+
+	try {
+		const result = await fetchDisclosures(apiKey, today);
+
+		if (result.status === "013") {
+			console.log("조회된 공시가 없습니다.");
+			return;
+		}
+
+		if (result.status !== "000") {
+			console.error("OpenDART API 오류");
+			console.error(`status: ${result.status}`);
+			console.error(`message: ${result.message}`);
+			process.exitCode = 1;
+			return;
+		}
+
+		const disclosures = result.list ?? [];
+
+		console.log(`공시 수: ${disclosures.length}`);
+		console.log("");
+
+		if (disclosures.length === 0) {
+			console.log("조회된 공시가 없습니다.");
+			return;
+		}
+
+		/*
+		 * 공시 목록 출력
+		 */
+		disclosures.forEach((disclosure, index) => {
+			console.log(`${index + 1}. ${disclosure.corp_name}`);
+
+			if (disclosure.stock_code) {
+				console.log(`   종목코드: ${disclosure.stock_code}`);
+			}
+
+			console.log(`   공시: ${disclosure.report_nm}`);
+			console.log(`   접수번호: ${disclosure.rcept_no}`);
+			console.log(`   접수일: ${disclosure.rcept_dt}`);
+			console.log("");
+		});
+
+		/*
+		 * 목록의 첫 번째 공시 선택
+		 */
+		const firstDisclosure = disclosures[0];
+
+		console.log("========================================");
+		console.log("첫 번째 공시의 원문을 가져옵니다.");
+		console.log("========================================");
+		console.log("");
+
+		console.log(`회사: ${firstDisclosure.corp_name}`);
+		console.log(`공시: ${firstDisclosure.report_nm}`);
+		console.log(`접수번호: ${firstDisclosure.rcept_no}`);
+		console.log("");
+
+		/*
+		 * 공시 원본 다운로드
+		 */
+		console.log("공시 원본 ZIP 다운로드 중...");
+
+		const zipData = await fetchDisclosureDocument(
+			apiKey,
+			firstDisclosure.rcept_no,
+		);
+
+		console.log(
+			`ZIP 다운로드 완료 (${Math.round(zipData.byteLength / 1024)} KB)`,
+		);
+		console.log("");
+
+		/*
+		 * ZIP 압축 해제 후 XML 읽기
+		 */
+		console.log("ZIP 압축 해제 중...");
+		console.log("");
+
+		const xml = await extractXmlFromZip(zipData);
+
+		/*
+		 * XML 출력
+		 */
+		console.log("========================================");
+		console.log("XML 원문");
+		console.log("========================================");
+		console.log("");
+
+		console.log(xml);
+	} catch (error) {
+		console.error("");
+		console.error("처리 중 오류가 발생했습니다.");
+
+		if (error instanceof Error) {
+			console.error(error.message);
+		} else {
+			console.error(error);
+		}
+
+		process.exitCode = 1;
+	}
+}
+
+main();
+```
